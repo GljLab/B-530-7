@@ -449,7 +449,7 @@ const loadStaffWorkload = async () => {
 
 const loadAvgDurationTrend = async () => {
   try {
-    const res = await api.hotel.getAvgDurationTrend(6)
+    const res = await api.maintenance.getAvgDurationTrend(6)
     if (res.code === 200 && res.data) {
       avgDurationTrend.value = res.data
       await nextTick()
@@ -460,7 +460,7 @@ const loadAvgDurationTrend = async () => {
 
 const loadStaffWorkloadCompare = async () => {
   try {
-    const res = await api.hotel.getStaffWorkloadCompare()
+    const res = await api.maintenance.getStaffWorkloadCompare()
     if (res.code === 200 && res.data) {
       staffWorkloadCompare.value = res.data
       await nextTick()
@@ -471,7 +471,7 @@ const loadStaffWorkloadCompare = async () => {
 
 const loadInspectionPassRate = async () => {
   try {
-    const res = await api.hotel.getInspectionPassRate()
+    const res = await api.maintenance.getInspectionPassRate()
     if (res.code === 200 && res.data) {
       inspectionPassRate.value = res.data
       await nextTick()
@@ -482,7 +482,7 @@ const loadInspectionPassRate = async () => {
 
 const loadCostTrendEnhanced = async () => {
   try {
-    const res = await api.hotel.getCostTrendEnhanced(6)
+    const res = await api.maintenance.getCostTrendEnhanced(6)
     if (res.code === 200 && res.data) {
       costTrendEnhanced.value = res.data
       await nextTick()
@@ -805,7 +805,7 @@ const handleConfirmExport = async () => {
       typeIds: exportForm.value.typeIds,
       includeChart: exportForm.value.includeChart
     }
-    const res = await api.hotel.exportStatistics(params)
+    const res = await api.hotel.exportMaintenanceStats(params)
     const blob = new Blob([res], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')

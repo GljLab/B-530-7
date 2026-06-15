@@ -10,6 +10,7 @@ import com.example.permission.mapper.SysRoleMapper;
 import com.example.permission.mapper.SysUserMapper;
 import com.example.permission.mapper.SysUserRoleMapper;
 import com.example.permission.security.LoginUser;
+import com.example.permission.service.UserFloorPermissionService;
 import com.example.permission.utils.JwtUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -51,6 +52,9 @@ public class AuthService {
     
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private UserFloorPermissionService userFloorPermissionService;
     
     /**
      * 用户登录
@@ -167,6 +171,12 @@ public class AuthService {
         userInfo.put("avatar", user.getAvatar());
         userInfo.put("status", user.getStatus());
         userInfo.put("roles", roles);
+
+        List<Long> floorIds = userFloorPermissionService.getFloorIdsByUserId(user.getId());
+        userInfo.put("floorIds", floorIds);
+        Map<String, Object> floorSummary = userFloorPermissionService.getUserPermissionSummary(user.getId());
+        userInfo.put("floorSummary", floorSummary);
+
         return userInfo;
     }
     

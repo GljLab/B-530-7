@@ -146,6 +146,12 @@ const api = {
     updateFloor: (data) => request.put('/hotel/floor', data),
     deleteFloor: (id) => request.delete(`/hotel/floor/${id}`),
 
+    getFloorPermissionUsers: () => request.get('/hotel/floorPermission/users'),
+    getUserFloorPermissions: (userId) => request.get(`/hotel/floorPermission/user/${userId}`),
+    saveUserFloorPermissions: (userId, data) => request.post(`/hotel/floorPermission/user/${userId}`, data),
+    clearUserFloorPermissions: (userId) => request.delete(`/hotel/floorPermission/user/${userId}`),
+    getUserFloorPermissionSummary: (userId) => request.get(`/hotel/floorPermission/user/${userId}/summary`),
+
     getRoomTypes: () => request.get('/hotel/roomType/list'),
     getRoomTypePage: (params) => request.get('/hotel/roomType/page', { params }),
     getRoomType: (id) => request.get(`/hotel/roomType/${id}`),
@@ -168,6 +174,13 @@ const api = {
     getRoomsByFloor: (floorId) => request.get(`/hotel/room/floor/${floorId}`),
     exportRooms: (data) => request.post('/hotel/room/export', data, { responseType: 'blob' }),
 
+    batchUpdateRoomStatus: (data) => request.post('/batch/room/status', data),
+    batchUpdateRoomAttr: (data) => request.post('/batch/room/attr', data),
+    batchDeleteRooms: (data) => request.post('/batch/room/delete', data),
+    getBatchOperation: (batchNo) => request.get(`/batch/${batchNo}`),
+    getBatchOperationDetails: (batchNo) => request.get(`/batch/${batchNo}/details`),
+    getBatchOperationPage: (params) => request.get('/batch/page', { params }),
+
     getSavedFilters: () => request.get('/hotel/filter/list'),
     getSavedFilter: (id) => request.get(`/hotel/filter/${id}`),
     addSavedFilter: (data) => request.post('/hotel/filter', data),
@@ -182,6 +195,11 @@ const api = {
     getDetailedFloorStats: () => request.get('/hotel/dashboard/floor/detail'),
     getAttributeDistribution: () => request.get('/hotel/dashboard/attributeDist'),
     getStatusDurationStats: () => request.get('/hotel/dashboard/statusDuration'),
+    getStatusTrend: (days) => request.get('/hotel/dashboard/statusTrend', { params: { days } }),
+    getFloorUsageStats: () => request.get('/hotel/dashboard/floorUsage'),
+    getRoomTypeHeatStats: () => request.get('/hotel/dashboard/roomTypeHeat'),
+    getStatusDurationStatsEnhanced: () => request.get('/hotel/dashboard/statusDurationEnhanced'),
+    exportDashboardStats: (data) => request.post('/hotel/dashboard/export', data, { responseType: 'blob' }),
 
     uploadFile: (formData) => request.post('/file/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 
@@ -199,6 +217,19 @@ const api = {
     deleteMaintenanceOrder: (id) => request.delete(`/maintenance/order/${id}`),
     exportMaintenanceOrders: (data) => request.post('/maintenance/order/export', data, { responseType: 'blob' }),
 
+    autoAssignMaintenanceOrder: (orderId) => request.post(`/maintenance/assign/auto/${orderId}`),
+    batchAutoAssignMaintenanceOrders: (data) => request.post('/maintenance/assign/batchAuto', data),
+    batchAssignMaintenanceOrders: (data) => request.post('/maintenance/assign/batch', data),
+    getMaintenanceStaffWorkload: () => request.get('/maintenance/assign/staffWorkload'),
+    getMaintenanceStaffListWithSkills: () => request.get('/maintenance/assign/staffList'),
+    getAssignRules: () => request.get('/maintenance/assign/rules'),
+    saveAssignRule: (data) => request.post('/maintenance/assign/rule', data),
+    deleteAssignRule: (id) => request.delete(`/maintenance/assign/rule/${id}`),
+    updateAssignRuleStatus: (id, data) => request.put(`/maintenance/assign/rule/${id}/status`, data),
+    getStaffSkills: (userId) => request.get(`/maintenance/assign/staff/${userId}/skills`),
+    saveStaffSkill: (data) => request.post('/maintenance/assign/staff/skill', data),
+    deleteStaffSkill: (id) => request.delete(`/maintenance/assign/staff/skill/${id}`),
+
     getChangeLogPage: (params) => request.get('/maintenance/changeLog/page', { params }),
     getChangeLogsByRoom: (roomId) => request.get(`/maintenance/changeLog/room/${roomId}`),
 
@@ -208,9 +239,61 @@ const api = {
     getStatsCostTrend: (months) => request.get('/maintenance/statistics/costTrend', { params: { months } }),
     getStatsDuration: () => request.get('/maintenance/statistics/durationStats'),
     getStatsStaffWorkload: () => request.get('/maintenance/statistics/staffWorkload'),
+    getAvgDurationTrend: (months) => request.get('/maintenance/statistics/avgDurationTrend', { params: { months } }),
+    getStaffWorkloadCompare: () => request.get('/maintenance/statistics/staffWorkloadCompare'),
+    getInspectionPassRate: () => request.get('/maintenance/statistics/inspectionPassRate'),
+    getCostTrendEnhanced: (months) => request.get('/maintenance/statistics/costTrendEnhanced', { params: { months } }),
     exportMaintenanceStats: () => request.post('/maintenance/statistics/export', {}, { responseType: 'blob' }),
+    exportStatistics: (data) => request.post('/maintenance/statistics/exportAll', data, { responseType: 'blob' }),
 
     getMaintenanceStaffList: () => request.get('/system/user/list', { params: { pageNum: 1, pageSize: 100, status: 1 } })
+  },
+
+  maintenance: {
+    getDashboard: () => request.get('/maintenance/order/dashboard'),
+    getOrderPage: (params) => request.get('/maintenance/order/page', { params }),
+    getOrder: (id) => request.get(`/maintenance/order/${id}`),
+    getOrdersByRoom: (roomId) => request.get(`/maintenance/order/room/${roomId}`),
+    getRoomStats: (roomId) => request.get(`/maintenance/order/room/${roomId}/stats`),
+    createOrder: (data) => request.post('/maintenance/order', data),
+    assignOrder: (id, data) => request.put(`/maintenance/order/${id}/assign`, data),
+    acceptOrder: (id) => request.put(`/maintenance/order/${id}/accept`),
+    addProgress: (id, data) => request.put(`/maintenance/order/${id}/progress`, data),
+    finishOrder: (id, data) => request.put(`/maintenance/order/${id}/finish`, data),
+    inspectOrder: (id, data) => request.put(`/maintenance/order/${id}/inspect`, data),
+    deleteOrder: (id) => request.delete(`/maintenance/order/${id}`),
+    exportOrders: (data) => request.post('/maintenance/order/export', data, { responseType: 'blob' }),
+
+    autoAssign: (orderId) => request.post(`/maintenance/assign/auto/${orderId}`),
+    batchAutoAssign: (data) => request.post('/maintenance/assign/batchAuto', data),
+    batchAssign: (data) => request.post('/maintenance/assign/batch', data),
+    getStaffWorkload: () => request.get('/maintenance/assign/staffWorkload'),
+    getStaffListWithSkills: () => request.get('/maintenance/assign/staffList'),
+    getAssignRules: () => request.get('/maintenance/assign/rules'),
+    saveAssignRule: (data) => request.post('/maintenance/assign/rule', data),
+    deleteAssignRule: (id) => request.delete(`/maintenance/assign/rule/${id}`),
+    updateAssignRuleStatus: (id, data) => request.put(`/maintenance/assign/rule/${id}/status`, data),
+    getStaffSkills: (userId) => request.get(`/maintenance/assign/staff/${userId}/skills`),
+    saveStaffSkill: (data) => request.post('/maintenance/assign/staff/skill', data),
+    deleteStaffSkill: (id) => request.delete(`/maintenance/assign/staff/skill/${id}`),
+
+    getChangeLogPage: (params) => request.get('/maintenance/changeLog/page', { params }),
+    getChangeLogsByRoom: (roomId) => request.get(`/maintenance/changeLog/room/${roomId}`),
+
+    getStatsOverview: () => request.get('/maintenance/statistics/overview'),
+    getStatsTopRooms: (limit) => request.get('/maintenance/statistics/topRooms', { params: { limit } }),
+    getStatsTypeDistribution: () => request.get('/maintenance/statistics/typeDistribution'),
+    getStatsCostTrend: (months) => request.get('/maintenance/statistics/costTrend', { params: { months } }),
+    getStatsDuration: () => request.get('/maintenance/statistics/durationStats'),
+    getStatsStaffWorkload: () => request.get('/maintenance/statistics/staffWorkload'),
+    getAvgDurationTrend: (months) => request.get('/maintenance/statistics/avgDurationTrend', { params: { months } }),
+    getStaffWorkloadCompare: () => request.get('/maintenance/statistics/staffWorkloadCompare'),
+    getInspectionPassRate: () => request.get('/maintenance/statistics/inspectionPassRate'),
+    getCostTrendEnhanced: (months) => request.get('/maintenance/statistics/costTrendEnhanced', { params: { months } }),
+    exportStats: () => request.post('/maintenance/statistics/export', {}, { responseType: 'blob' }),
+    exportAllStats: (data) => request.post('/maintenance/statistics/exportAll', data, { responseType: 'blob' }),
+
+    getStaffList: () => request.get('/system/user/list', { params: { pageNum: 1, pageSize: 100, status: 1 } })
   }
 }
 

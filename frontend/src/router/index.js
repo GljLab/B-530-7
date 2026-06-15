@@ -83,6 +83,18 @@ const routes = [
         meta: { title: '房间详情', icon: 'Key', permission: 'hotel:room:query' }
       },
       {
+        path: 'hotel/floorPermission',
+        name: 'FloorPermission',
+        component: () => import('@/views/hotel/FloorPermission.vue'),
+        meta: { title: '楼层权限配置', icon: 'Key', permission: 'hotel:floorPermission:list' }
+      },
+      {
+        path: 'hotel/batchOperation',
+        name: 'BatchOperation',
+        component: () => import('@/views/hotel/BatchOperation.vue'),
+        meta: { title: '批量操作日志', icon: 'List', permission: 'hotel:batchOperation:list' }
+      },
+      {
         path: 'hotel/dashboard',
         name: 'HotelDashboard',
         component: () => import('@/views/hotel/HotelDashboard.vue'),

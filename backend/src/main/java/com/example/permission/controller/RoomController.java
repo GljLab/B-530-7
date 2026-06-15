@@ -5,11 +5,14 @@ import com.example.permission.common.PageResult;
 import com.example.permission.common.Result;
 import com.example.permission.entity.Room;
 import com.example.permission.entity.RoomStatusLog;
+import com.example.permission.security.LoginUser;
 import com.example.permission.service.ExportService;
 import com.example.permission.service.RoomService;
 import com.example.permission.service.RoomStatusLogService;
 import com.example.permission.service.SysUserService;
+import com.example.permission.service.UserFloorPermissionService;
 import com.example.permission.utils.JwtUtils;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -42,6 +45,9 @@ public class RoomController {
     @Autowired
     private ExportService exportService;
 
+    @Autowired
+    private UserFloorPermissionService userFloorPermissionService;
+
     @GetMapping("/page")
     @PreAuthorize("hasAuthority('hotel:room:list')")
     public Result<PageResult<Room>> pageList(
@@ -55,8 +61,10 @@ public class RoomController {
             @RequestParam(required = false) List<String> orientations,
             @RequestParam(required = false) List<String> viewTypes,
             @RequestParam(required = false) List<String> specialTags) {
-        PageResult<Room> result = roomService.pageList(pageNum, pageSize, roomNumber, buildingId, floorId,
-                roomTypeId, status, orientations, viewTypes, specialTags);
+        LoginUser loginUser = (LoginUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long userId = loginUser.getUserId();
+        PageResult<Room> result = roomService.pageListWithPermission(pageNum, pageSize, roomNumber, buildingId, floorId,
+                roomTypeId, status, orientations, viewTypes, specialTags, userId);
         return Result.success(result);
     }
 
@@ -71,8 +79,10 @@ public class RoomController {
             @RequestParam(required = false) List<String> orientations,
             @RequestParam(required = false) List<String> viewTypes,
             @RequestParam(required = false) List<String> specialTags) {
-        PageResult<Room> page = roomService.pageList(1, Integer.MAX_VALUE, roomNumber, buildingId, floorId,
-                roomTypeId, status, orientations, viewTypes, specialTags);
+        LoginUser loginUser = (LoginUser) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Long userId = loginUser.getUserId();
+        PageResult<Room> page = roomService.pageListWithPermission(1, Integer.MAX_VALUE, roomNumber, buildingId, floorId,
+                roomTypeId, status, orientations, viewTypes, specialTags, userId);
         return Result.success(page.getList());
     }
 

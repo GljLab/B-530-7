@@ -57,12 +57,32 @@ public class RoomService {
     @Autowired
     private RoomTypeService roomTypeService;
 
+    @Autowired
+    private UserFloorPermissionService userFloorPermissionService;
+
     public PageResult<Room> pageList(Integer pageNum, Integer pageSize, String roomNumber,
                                       Long buildingId, Long floorId, Long roomTypeId,
                                       List<Integer> status, List<String> orientations,
                                       List<String> viewTypes, List<String> specialTags) {
         QueryWrapper query = buildQueryWrapper(roomNumber, buildingId, floorId, roomTypeId,
-                status, orientations, viewTypes, specialTags);
+                status, orientations, viewTypes, specialTags, null);
+        query.orderBy(ROOM.ROOM_NUMBER.asc());
+        Page<Room> page = roomMapper.paginate(Page.of(pageNum, pageSize), query);
+        for (Room room : page.getRecords()) {
+            fillRoomAssociations(room);
+        }
+        return new PageResult<>(page.getTotalRow(), page.getRecords(),
+                (long) page.getPageNumber(), (long) page.getPageSize());
+    }
+
+    public PageResult<Room> pageListWithPermission(Integer pageNum, Integer pageSize, String roomNumber,
+                                                    Long buildingId, Long floorId, Long roomTypeId,
+                                                    List<Integer> status, List<String> orientations,
+                                                    List<String> viewTypes, List<String> specialTags,
+                                                    Long userId) {
+        List<Long> floorIds = userFloorPermissionService.getFloorIdsByUserId(userId);
+        QueryWrapper query = buildQueryWrapper(roomNumber, buildingId, floorId, roomTypeId,
+                status, orientations, viewTypes, specialTags, floorIds);
         query.orderBy(ROOM.ROOM_NUMBER.asc());
         Page<Room> page = roomMapper.paginate(Page.of(pageNum, pageSize), query);
         for (Room room : page.getRecords()) {
@@ -108,6 +128,18 @@ public class RoomService {
                     query.or(ROOM.SPECIAL_TAGS.like(specialTags.get(i)));
                 }
             }
+        }
+        return query;
+    }
+
+    private QueryWrapper buildQueryWrapper(String roomNumber, Long buildingId, Long floorId,
+                                           Long roomTypeId, List<Integer> status,
+                                           List<String> orientations, List<String> viewTypes,
+                                           List<String> specialTags, List<Long> floorIds) {
+        QueryWrapper query = buildQueryWrapper(roomNumber, buildingId, floorId, roomTypeId,
+                status, orientations, viewTypes, specialTags);
+        if (floorIds != null && !floorIds.isEmpty()) {
+            query.and(ROOM.FLOOR_ID.in(floorIds));
         }
         return query;
     }

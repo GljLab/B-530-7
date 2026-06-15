@@ -107,7 +107,7 @@
           <el-button v-if="hasPermission('hotel:room:add')" type="primary" @click="openRoomDialog(null)">
             <el-icon><Plus /></el-icon>新增房间
           </el-button>
-          <el-button v-if="hasPermission('hotel:room:batch:add')" @click="openBatchDialog">
+          <el-button v-if="hasPermission('hotel:room:batch:add')" @click="openBatchCreateDialog">
             <el-icon><CopyDocument /></el-icon>批量创建
           </el-button>
           <el-button
@@ -119,6 +119,38 @@
           </el-button>
           <el-button v-if="hasPermission('hotel:room:export')" @click="openExportDialog">
             <el-icon><Download /></el-icon>导出
+          </el-button>
+        </div>
+        <div v-if="selectedRows.length > 0" class="batch-toolbar">
+          <el-tag type="info" class="batch-count-tag">
+            已选择 <strong>{{ selectedRows.length }}</strong> 个房间
+          </el-tag>
+          <el-button 
+            v-if="hasPermission('hotel:room:batch:status')" 
+            type="primary" 
+            size="small" 
+            @click="openBatchDialog('status')"
+          >
+            <el-icon><Refresh /></el-icon>批量修改状态
+          </el-button>
+          <el-button 
+            v-if="hasPermission('hotel:room:batch:attr')" 
+            type="warning" 
+            size="small" 
+            @click="openBatchDialog('attr')"
+          >
+            <el-icon><Edit /></el-icon>批量修改属性
+          </el-button>
+          <el-button 
+            v-if="hasPermission('hotel:room:batch:delete')" 
+            type="danger" 
+            size="small" 
+            @click="openBatchDialog('delete')"
+          >
+            <el-icon><Delete /></el-icon>批量删除
+          </el-button>
+          <el-button size="small" @click="clearSelection">
+            取消选择
           </el-button>
         </div>
       </div>
@@ -348,73 +380,73 @@
       </template>
     </el-dialog>
 
-    <el-dialog v-model="batchDialogVisible" title="批量创建房间" width="700px" destroy-on-close>
-      <el-steps :active="batchStep" finish-status="success" class="batch-steps">
+    <el-dialog v-model="batchCreateDialogVisible" title="批量创建房间" width="700px" destroy-on-close>
+      <el-steps :active="batchCreateStep" finish-status="success" class="batch-steps">
         <el-step title="选择位置与房型" />
         <el-step title="设置房号规则" />
         <el-step title="默认属性" />
       </el-steps>
 
-      <div v-if="batchStep === 0" class="batch-section">
+      <div v-if="batchCreateStep === 0" class="batch-section">
         <el-form label-width="100px">
           <el-form-item label="楼栋" required>
-            <el-select v-model="batchForm.buildingId" placeholder="请选择楼栋" style="width: 100%" @change="handleBatchBuildingChange">
+            <el-select v-model="batchCreateForm.buildingId" placeholder="请选择楼栋" style="width: 100%" @change="handleBatchCreateBuildingChange">
               <el-option v-for="b in buildings" :key="b.id" :label="b.buildingName" :value="b.id" />
             </el-select>
           </el-form-item>
           <el-form-item label="楼层" required>
-            <el-select v-model="batchForm.floorId" placeholder="请选择楼层" style="width: 100%">
-              <el-option v-for="f in batchFloors" :key="f.id" :label="f.floorName" :value="f.id" />
+            <el-select v-model="batchCreateForm.floorId" placeholder="请选择楼层" style="width: 100%">
+              <el-option v-for="f in batchCreateFloors" :key="f.id" :label="f.floorName" :value="f.id" />
             </el-select>
           </el-form-item>
           <el-form-item label="房型" required>
-            <el-select v-model="batchForm.roomTypeId" placeholder="请选择房型" style="width: 100%">
+            <el-select v-model="batchCreateForm.roomTypeId" placeholder="请选择房型" style="width: 100%">
               <el-option v-for="rt in roomTypes" :key="rt.id" :label="rt.typeName" :value="rt.id" />
             </el-select>
           </el-form-item>
         </el-form>
       </div>
 
-      <div v-if="batchStep === 1" class="batch-section">
+      <div v-if="batchCreateStep === 1" class="batch-section">
         <el-form label-width="100px">
           <el-form-item label="号码前缀">
-            <el-input v-model="batchForm.numberPrefix" placeholder="例如: 2" style="width: 100%" />
+            <el-input v-model="batchCreateForm.numberPrefix" placeholder="例如: 2" style="width: 100%" />
           </el-form-item>
           <el-form-item label="起始号" required>
-            <el-input v-model="batchForm.startNum" placeholder="例如: 01" style="width: 100%" />
+            <el-input v-model="batchCreateForm.startNum" placeholder="例如: 01" style="width: 100%" />
           </el-form-item>
           <el-form-item label="结束号" required>
-            <el-input v-model="batchForm.endNum" placeholder="例如: 30" style="width: 100%" />
+            <el-input v-model="batchCreateForm.endNum" placeholder="例如: 30" style="width: 100%" />
           </el-form-item>
         </el-form>
-        <div v-if="batchPreviewNumbers.length > 0" class="batch-preview">
-          <div class="batch-preview-title">预览房号 ({{ batchPreviewNumbers.length }}间)</div>
+        <div v-if="batchCreatePreviewNumbers.length > 0" class="batch-preview">
+          <div class="batch-preview-title">预览房号 ({{ batchCreatePreviewNumbers.length }}间)</div>
           <div class="batch-preview-list">
-            <el-tag v-for="num in batchPreviewNumbers" :key="num" size="small" class="preview-tag">{{ num }}</el-tag>
+            <el-tag v-for="num in batchCreatePreviewNumbers" :key="num" size="small" class="preview-tag">{{ num }}</el-tag>
           </div>
         </div>
       </div>
 
-      <div v-if="batchStep === 2" class="batch-section">
+      <div v-if="batchCreateStep === 2" class="batch-section">
         <el-form label-width="100px">
           <el-form-item label="朝向">
-            <el-select v-model="batchForm.orientation" placeholder="请选择朝向" clearable style="width: 100%">
+            <el-select v-model="batchCreateForm.orientation" placeholder="请选择朝向" clearable style="width: 100%">
               <el-option v-for="o in orientationOptions" :key="o" :label="o" :value="o" />
             </el-select>
           </el-form-item>
           <el-form-item label="景观">
-            <el-select v-model="batchForm.viewType" placeholder="请选择景观" clearable style="width: 100%">
+            <el-select v-model="batchCreateForm.viewType" placeholder="请选择景观" clearable style="width: 100%">
               <el-option v-for="v in viewTypeOptions" :key="v" :label="v" :value="v" />
             </el-select>
           </el-form-item>
         </el-form>
       </div>
 
-      <div v-if="batchResult" class="batch-result">
-        <el-alert :title="`成功创建 ${batchResult.successCount} 间房间`" type="success" show-icon :closable="false" />
-        <div v-if="batchResult.failures && batchResult.failures.length > 0" class="batch-failures">
+      <div v-if="batchCreateResult" class="batch-result">
+        <el-alert :title="`成功创建 ${batchCreateResult.successCount} 间房间`" type="success" show-icon :closable="false" />
+        <div v-if="batchCreateResult.failures && batchCreateResult.failures.length > 0" class="batch-failures">
           <div class="batch-failures-title">失败列表：</div>
-          <el-table :data="batchResult.failures" size="small" border>
+          <el-table :data="batchCreateResult.failures" size="small" border>
             <el-table-column prop="roomNumber" label="房号" width="140" />
             <el-table-column prop="reason" label="原因" />
           </el-table>
@@ -422,10 +454,10 @@
       </div>
 
       <template #footer>
-        <el-button @click="batchDialogVisible = false">关闭</el-button>
-        <el-button v-if="batchStep > 0 && !batchResult" @click="batchStep--">上一步</el-button>
-        <el-button v-if="batchStep < 2" type="primary" @click="batchStep++">下一步</el-button>
-        <el-button v-if="batchStep === 2 && !batchResult" type="primary" :loading="batchSaving" @click="handleBatchCreate">确认创建</el-button>
+        <el-button @click="batchCreateDialogVisible = false">关闭</el-button>
+        <el-button v-if="batchCreateStep > 0 && !batchCreateResult" @click="batchCreateStep--">上一步</el-button>
+        <el-button v-if="batchCreateStep < 2" type="primary" @click="batchCreateStep++">下一步</el-button>
+        <el-button v-if="batchCreateStep === 2 && !batchCreateResult" type="primary" :loading="batchCreateSaving" @click="handleBatchCreate">确认创建</el-button>
       </template>
     </el-dialog>
 
@@ -596,6 +628,14 @@
         </div>
       </div>
     </el-drawer>
+
+    <BatchOperationDialog
+      v-model="batchDialogVisible"
+      :title="batchDialogTitle"
+      :operation-type="batchOperationType"
+      :selected-rooms="selectedRows"
+      @confirm="handleBatchConfirm"
+    />
   </div>
 </template>
 
@@ -604,10 +644,11 @@ import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   Plus, Search, House, User, CircleCheck, WarnTriangleFilled,
-  CopyDocument, Download, Stamp, FolderAdd
+  CopyDocument, Download, Stamp, FolderAdd, Refresh, Edit, Delete
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import api from '@/api'
+import BatchOperationDialog from '@/components/BatchOperationDialog.vue'
 
 const userStore = useUserStore()
 const hasPermission = (p) => userStore.hasPermission(p)
@@ -932,62 +973,136 @@ const handleSaveRoom = async () => {
 }
 
 // Batch create dialog
-const batchDialogVisible = ref(false)
-const batchStep = ref(0)
-const batchSaving = ref(false)
-const batchResult = ref(null)
-const batchFloors = ref([])
+const batchCreateDialogVisible = ref(false)
+const batchCreateStep = ref(0)
+const batchCreateSaving = ref(false)
+const batchCreateResult = ref(null)
+const batchCreateFloors = ref([])
 
-const batchForm = reactive({
+const batchCreateForm = reactive({
   buildingId: null, floorId: null, roomTypeId: null,
   numberPrefix: '', startNum: '', endNum: '', orientation: '', viewType: ''
 })
 
-const batchPreviewNumbers = computed(() => {
-  const start = parseInt(batchForm.startNum, 10)
-  const end = parseInt(batchForm.endNum, 10)
+const batchCreatePreviewNumbers = computed(() => {
+  const start = parseInt(batchCreateForm.startNum, 10)
+  const end = parseInt(batchCreateForm.endNum, 10)
   if (isNaN(start) || isNaN(end) || start > end) return []
-  const prefix = batchForm.numberPrefix || ''
+  const prefix = batchCreateForm.numberPrefix || ''
   const numbers = []
-  for (let i = start; i <= end; i++) numbers.push(prefix + String(i).padStart(batchForm.startNum.length, '0'))
+  for (let i = start; i <= end; i++) numbers.push(prefix + String(i).padStart(batchCreateForm.startNum.length, '0'))
   return numbers
 })
 
-const openBatchDialog = () => {
-  batchStep.value = 0; batchResult.value = null
-  Object.assign(batchForm, {
+const openBatchCreateDialog = () => {
+  batchCreateStep.value = 0; batchCreateResult.value = null
+  Object.assign(batchCreateForm, {
     buildingId: null, floorId: null, roomTypeId: null,
     numberPrefix: '', startNum: '', endNum: '', orientation: '', viewType: ''
   })
-  batchFloors.value = []; batchDialogVisible.value = true
+  batchCreateFloors.value = []; batchCreateDialogVisible.value = true
 }
 
-const handleBatchBuildingChange = async () => {
-  batchForm.floorId = null
-  if (!batchForm.buildingId) { batchFloors.value = []; return }
+const handleBatchCreateBuildingChange = async () => {
+  batchCreateForm.floorId = null
+  if (!batchCreateForm.buildingId) { batchCreateFloors.value = []; return }
   try {
-    const res = await api.hotel.getFloors(batchForm.buildingId)
-    if (res.code === 200) batchFloors.value = res.data || []
-  } catch { batchFloors.value = [] }
+    const res = await api.hotel.getFloors(batchCreateForm.buildingId)
+    if (res.code === 200) batchCreateFloors.value = res.data || []
+  } catch { batchCreateFloors.value = [] }
 }
 
 const handleBatchCreate = async () => {
-  if (!batchForm.buildingId || !batchForm.floorId || !batchForm.roomTypeId) { ElMessage.warning('请先选择楼栋、楼层和房型'); return }
-  if (!batchForm.startNum || !batchForm.endNum) { ElMessage.warning('请输入起始号和结束号'); return }
-  batchSaving.value = true
+  if (!batchCreateForm.buildingId || !batchCreateForm.floorId || !batchCreateForm.roomTypeId) { ElMessage.warning('请先选择楼栋、楼层和房型'); return }
+  if (!batchCreateForm.startNum || !batchCreateForm.endNum) { ElMessage.warning('请输入起始号和结束号'); return }
+  batchCreateSaving.value = true
   try {
     const payload = {
-      buildingId: batchForm.buildingId, floorId: batchForm.floorId, roomTypeId: batchForm.roomTypeId,
-      numberPrefix: batchForm.numberPrefix || '', startNum: parseInt(batchForm.startNum, 10),
-      endNum: parseInt(batchForm.endNum, 10), orientation: batchForm.orientation || undefined,
-      viewType: batchForm.viewType || undefined
+      buildingId: batchCreateForm.buildingId, floorId: batchCreateForm.floorId, roomTypeId: batchCreateForm.roomTypeId,
+      numberPrefix: batchCreateForm.numberPrefix || '', startNum: parseInt(batchCreateForm.startNum, 10),
+      endNum: parseInt(batchCreateForm.endNum, 10), orientation: batchCreateForm.orientation || undefined,
+      viewType: batchCreateForm.viewType || undefined
     }
     const res = await api.hotel.batchCreateRooms(payload)
     if (res.code === 200) {
-      batchResult.value = res.data || { successCount: batchPreviewNumbers.value.length, failures: [] }
+      batchCreateResult.value = res.data || { successCount: batchCreatePreviewNumbers.value.length, failures: [] }
       ElMessage.success('批量创建完成'); await loadRooms(); await loadStats()
     } else { ElMessage.error(res.message || '批量创建失败') }
-  } catch { ElMessage.error('批量创建失败') } finally { batchSaving.value = false }
+  } catch { ElMessage.error('批量创建失败') } finally { batchCreateSaving.value = false }
+}
+
+// Batch operation dialog
+const batchDialogVisible = ref(false)
+const batchOperationType = ref('status')
+const batchDialogTitle = computed(() => {
+  const map = { status: '批量修改房间状态', attr: '批量修改房间属性', delete: '批量删除房间' }
+  return map[batchOperationType.value] || '批量操作'
+})
+const batchLoading = ref(false)
+
+const openBatchDialog = (type) => {
+  if (selectedRows.value.length > 50) {
+    ElMessage.warning('单次批量操作最多50个房间')
+    return
+  }
+  batchOperationType.value = type
+  batchDialogVisible.value = true
+}
+
+const clearSelection = () => {
+  selectedRows.value = []
+  ElMessage.info('请点击表格左上角的复选框取消选择')
+}
+
+const handleBatchConfirm = async (params) => {
+  batchLoading.value = true
+  try {
+    const roomIds = selectedRows.value.map(r => r.id)
+    let res
+    if (batchOperationType.value === 'status') {
+      res = await api.hotel.batchUpdateRoomStatus({
+        roomIds,
+        targetStatus: params.targetStatus,
+        reason: params.reason,
+        skipInvalid: params.skipInvalid
+      })
+    } else if (batchOperationType.value === 'attr') {
+      res = await api.hotel.batchUpdateRoomAttr({
+        roomIds,
+        attrType: params.attrType,
+        attrMode: params.attrMode,
+        attrValue: params.attrValue,
+        reason: params.reason,
+        skipInvalid: params.skipInvalid
+      })
+    } else if (batchOperationType.value === 'delete') {
+      res = await api.hotel.batchDeleteRooms({
+        roomIds,
+        reason: params.reason,
+        skipInvalid: params.skipInvalid
+      })
+    }
+    
+    if (res.code === 200) {
+      const data = res.data || {}
+      const msg = `批量操作完成：成功${data.successCount || 0}个，失败${data.failCount || 0}个，跳过${data.skipCount || 0}个`
+      if ((data.failCount || 0) > 0) {
+        ElMessage.warning(msg + `，批次号：${data.batchNo || ''}`)
+      } else {
+        ElMessage.success(msg + `，批次号：${data.batchNo || ''}`)
+      }
+      batchDialogVisible.value = false
+      selectedRows.value = []
+      await loadRooms()
+      await loadStats()
+    } else {
+      ElMessage.error(res.message || '批量操作失败')
+    }
+  } catch (e) {
+    ElMessage.error('批量操作失败')
+  } finally {
+    batchLoading.value = false
+  }
 }
 
 // Status dialog
@@ -1616,5 +1731,26 @@ onBeforeUnmount(() => {
   color: #4a5568;
   line-height: 1.6;
   white-space: pre-wrap;
+}
+
+.batch-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #ecf5ff 0%, #f0f9ff 100%);
+  border: 1px solid #d9ecff;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.batch-count-tag {
+  font-size: 14px;
+}
+
+.batch-count-tag strong {
+  color: #409eff;
+  font-size: 16px;
+  margin: 0 4px;
 }
 </style>

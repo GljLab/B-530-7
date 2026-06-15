@@ -8,7 +8,9 @@ import com.example.permission.entity.SysUser;
 import com.example.permission.security.LoginUser;
 import com.example.permission.service.ExportService;
 import com.example.permission.service.MaintenanceOrderService;
+import com.example.permission.service.RoomService;
 import com.example.permission.service.SysUserService;
+import com.example.permission.service.UserFloorPermissionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -39,6 +41,12 @@ public class MaintenanceOrderController {
 
     @Autowired
     private ExportService exportService;
+
+    @Autowired
+    private UserFloorPermissionService userFloorPermissionService;
+
+    @Autowired
+    private RoomService roomService;
 
     private LoginUser getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -87,9 +95,9 @@ public class MaintenanceOrderController {
                         user.getUser().getRoles().stream().anyMatch(r -> "maintenance_staff".equals(r.getRoleKey())))) {
             canSeeAll = false;
         }
-        PageResult<MaintenanceOrder> result = maintenanceOrderService.pageList(
+        PageResult<MaintenanceOrder> result = maintenanceOrderService.pageListWithPermission(
                 pageNum, pageSize, orderNo, roomNumber, statusList, typeList,
-                priorityList, assignedUserId, user.getUserId(), canSeeAll);
+                priorityList, assignedUserId, user.getUserId(), canSeeAll, user.getUserId());
         return Result.success(result);
     }
 

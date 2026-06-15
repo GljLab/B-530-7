@@ -67,6 +67,20 @@
           <el-icon><Search /></el-icon>搜索
         </el-button>
         <el-button @click="handleReset">重置</el-button>
+        <el-button
+          v-if="hasPermission('maintenance:order:batch:assign') && selectedOrders.length > 0"
+          type="primary"
+          @click="openBatchAssignDialog"
+        >
+          <el-icon><UserFilled /></el-icon>批量分配 ({{ selectedOrders.length }})
+        </el-button>
+        <el-button
+          v-if="hasPermission('maintenance:order:assign') && selectedOrders.length > 0"
+          type="success"
+          @click="handleBatchAutoAssign"
+        >
+          <el-icon><MagicStick /></el-icon>智能分配
+        </el-button>
         <el-button v-if="hasPermission('maintenance:order:export')" type="success" @click="handleExport">
           <el-icon><Download /></el-icon>导出
         </el-button>
@@ -80,7 +94,9 @@
         border
         v-loading="tableLoading"
         style="width: 100%"
+        @selection-change="handleSelectionChange"
       >
+        <el-table-column type="selection" width="50" align="center" />
         <el-table-column prop="orderNo" label="维护单号" width="160" align="center">
           <template #default="{ row }">
             <el-link type="primary" :underline="false" @click="goToDetail(row)">{{ row.orderNo }}</el-link>
@@ -156,6 +172,87 @@
         <el-button type="primary" :loading="assignSaving" @click="handleAssignSubmit">确认分配</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="batchAssignDialogVisible" title="批量分配维护单" width="700px" destroy-on-close>
+      <el-alert
+        v-if="selectedOrders.length > 0"
+        :title="`已选择 ${selectedOrders.length} 个待分配维护单`"
+        type="info"
+        :closable="false"
+        style="margin-bottom: 16px"
+      />
+      
+      <el-row :gutter="16">
+        <el-col :span="14">
+          <h4 class="dialog-section-title">待分配维护单</h4>
+          <el-table :data="selectedOrders" size="small" border max-height="280" style="width: 100%">
+            <el-table-column prop="orderNo" label="维护单号" width="160" />
+            <el-table-column prop="roomNumber" label="房间号" width="100" align="center" />
+            <el-table-column label="类型" width="100" align="center">
+              <template #default="{ row }">{{ maintenanceTypeLabel(row.maintenanceType) }}</template>
+            </el-table-column>
+            <el-table-column label="优先级" width="80" align="center">
+              <template #default="{ row }">
+                <el-tag :type="priorityTagType(row.priority)" size="small">{{ priorityLabel(row.priority) }}</el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+        </el-col>
+        <el-col :span="10">
+          <h4 class="dialog-section-title">选择维修人员</h4>
+          <el-table
+            :data="staffWorkload"
+            size="small"
+            border
+            highlight-current-row
+            max-height="280"
+            @current-change="handleStaffSelect"
+            style="width: 100%; cursor: pointer"
+          >
+            <el-table-column label="维修人员" min-width="100">
+              <template #default="{ row }">{{ row.nickname || row.username }}</template>
+            </el-table-column>
+            <el-table-column label="处理中" width="65" align="center">
+              <template #default="{ row }">
+                <el-tag size="small" type="warning">{{ row.processingCount || 0 }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="待处理" width="65" align="center">
+              <template #default="{ row }">
+                <el-tag size="small" type="info">{{ row.pendingCount || 0 }}</el-tag>
+              </template>
+            </el-table-column>
+          </el-table>
+          <el-form label-width="100px" style="margin-top: 16px">
+            <el-form-item label="维修人员" required>
+              <el-select v-model="batchAssignForm.targetUserId" placeholder="请选择或点击上方列表" style="width: 100%">
+                <el-option
+                  v-for="s in staffWorkload"
+                  :key="s.id"
+                  :label="`${s.nickname || s.username}（处理中:${s.processingCount || 0}）`"
+                  :value="s.id"
+                />
+              </el-select>
+            </el-form-item>
+          </el-form>
+        </el-col>
+      </el-row>
+      
+      <div class="assign-tip">
+        <el-icon color="#e6a23c"><InfoFilled /></el-icon>
+        <span>提示：系统将优先分配给工作量较少的人员，也可以手动选择。使用"智能分配"按钮可自动分配。</span>
+      </div>
+      
+      <template #footer>
+        <el-button @click="batchAssignDialogVisible = false">取消</el-button>
+        <el-button type="success" :loading="batchAssignLoading" @click="handleBatchAutoAssign">
+          <el-icon><MagicStick /></el-icon>智能分配
+        </el-button>
+        <el-button type="primary" :loading="batchAssignLoading" @click="handleBatchAssignSubmit">
+          确认分配
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -164,7 +261,8 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
-  Search, Download, Promotion, Tools, CircleCheck, Finished
+  Search, Download, Promotion, Tools, CircleCheck, Finished,
+  UserFilled, MagicStick, InfoFilled
 } from '@element-plus/icons-vue'
 import { useUserStore } from '@/stores/user'
 import api from '@/api'
@@ -399,6 +497,73 @@ const handleAccept = async (row) => {
   } catch {}
 }
 
+const selectedOrders = ref([])
+const batchAssignDialogVisible = ref(false)
+const batchAssignLoading = ref(false)
+const staffWorkload = ref([])
+const batchAssignForm = reactive({ targetUserId: null })
+
+const handleSelectionChange = (rows) => {
+  selectedOrders.value = rows.filter(r => r.status === 1)
+}
+
+const openBatchAssignDialog = async () => {
+  if (selectedOrders.value.length === 0) {
+    ElMessage.warning('请先选择待分配的维护单')
+    return
+  }
+  batchAssignForm.targetUserId = null
+  try {
+    const res = await api.hotel.getMaintenanceStaffWorkload()
+    if (res.code === 200) staffWorkload.value = res.data || []
+  } catch { staffWorkload.value = [] }
+  batchAssignDialogVisible.value = true
+}
+
+const handleStaffSelect = (row) => {
+  if (row) batchAssignForm.targetUserId = row.id
+}
+
+const handleBatchAssignSubmit = async () => {
+  if (!batchAssignForm.targetUserId) { ElMessage.warning('请选择维修人员'); return }
+  batchAssignLoading.value = true
+  try {
+    const orderIds = selectedOrders.value.map(o => o.id)
+    const res = await api.hotel.batchAssignMaintenanceOrders({
+      orderIds,
+      targetUserId: batchAssignForm.targetUserId
+    })
+    if (res.code === 200) {
+      const data = res.data || {}
+      ElMessage.success(`批量分配完成：成功${data.successCount || 0}个，失败${data.failCount || 0}个`)
+      batchAssignDialogVisible.value = false
+      selectedOrders.value = []
+      await loadOrders()
+      await loadDashboard()
+    } else { ElMessage.error(res.message || '分配失败') }
+  } catch { ElMessage.error('分配失败') } finally { batchAssignLoading.value = false }
+}
+
+const handleBatchAutoAssign = async () => {
+  if (selectedOrders.value.length === 0) {
+    ElMessage.warning('请先选择待分配的维护单')
+    return
+  }
+  batchAssignLoading.value = true
+  try {
+    const orderIds = selectedOrders.value.map(o => o.id)
+    const res = await api.hotel.batchAutoAssignMaintenanceOrders({ orderIds })
+    if (res.code === 200) {
+      const data = res.data || {}
+      ElMessage.success(`智能分配完成：成功${data.successCount || 0}个，失败${data.failCount || 0}个`)
+      batchAssignDialogVisible.value = false
+      selectedOrders.value = []
+      await loadOrders()
+      await loadDashboard()
+    } else { ElMessage.error(res.message || '智能分配失败') }
+  } catch { ElMessage.error('智能分配失败') } finally { batchAssignLoading.value = false }
+}
+
 onMounted(() => {
   loadDashboard()
   loadStaffList()
@@ -485,5 +650,24 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.dialog-section-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.assign-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fdf6ec;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #e6a23c;
+  margin-top: 12px;
 }
 </style>

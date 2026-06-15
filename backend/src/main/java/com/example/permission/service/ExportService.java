@@ -429,4 +429,171 @@ public class ExportService {
             return 0;
         }
     }
+
+    public byte[] exportStatistics(Map<String, Object> params, String operatorName, String filterDesc) {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            CellStyle headerStyle = createHeaderStyle(workbook);
+            CellStyle infoStyle = createInfoStyle(workbook);
+
+            int rowIdx;
+            Row infoRow;
+
+            Sheet sheet1 = workbook.createSheet("导出信息");
+            rowIdx = 0;
+            infoRow = sheet1.createRow(rowIdx++);
+            infoRow.createCell(0).setCellValue("导出时间：" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+            infoRow.getCell(0).setCellStyle(infoStyle);
+            infoRow = sheet1.createRow(rowIdx++);
+            infoRow.createCell(0).setCellValue("导出人：" + operatorName);
+            infoRow.getCell(0).setCellStyle(infoStyle);
+            infoRow = sheet1.createRow(rowIdx++);
+            infoRow.createCell(0).setCellValue("筛选条件：" + (filterDesc != null ? filterDesc : "全部数据"));
+            infoRow.getCell(0).setCellStyle(infoStyle);
+            sheet1.autoSizeColumn(0);
+
+            if (params != null && params.get("floorUsageStats") != null) {
+                Sheet sheet2 = workbook.createSheet("楼层使用率统计");
+                rowIdx = 0;
+                Row h2 = sheet2.createRow(rowIdx++);
+                String[] floorHeaders = {"楼栋", "楼层号", "楼层名称", "房间总数", "空闲", "已入住", "维修中", "使用率(%)"};
+                for (int i = 0; i < floorHeaders.length; i++) {
+                    h2.createCell(i).setCellValue(floorHeaders[i]);
+                    h2.getCell(i).setCellStyle(headerStyle);
+                }
+                List<Map<String, Object>> floorList = (List<Map<String, Object>>) params.get("floorUsageStats");
+                for (Map<String, Object> item : floorList) {
+                    Row r = sheet2.createRow(rowIdx++);
+                    r.createCell(0).setCellValue(safeString(item.get("buildingName")));
+                    r.createCell(1).setCellValue(safeInt(item.get("floorNumber")));
+                    r.createCell(2).setCellValue(safeString(item.get("floorName")));
+                    r.createCell(3).setCellValue(safeInt(item.get("total")));
+                    r.createCell(4).setCellValue(safeInt(item.get("free")));
+                    r.createCell(5).setCellValue(safeInt(item.get("occupied")));
+                    r.createCell(6).setCellValue(safeInt(item.get("maintenance")));
+                    r.createCell(7).setCellValue(safeDouble(item.get("usageRate")));
+                }
+                for (int i = 0; i < floorHeaders.length; i++) sheet2.autoSizeColumn(i);
+            }
+
+            if (params != null && params.get("roomTypeHeatStats") != null) {
+                Sheet sheet3 = workbook.createSheet("房型热度分析");
+                rowIdx = 0;
+                Row h3 = sheet3.createRow(rowIdx++);
+                String[] typeHeaders = {"房型名称", "房间总数", "空闲数", "空闲率(%)"};
+                for (int i = 0; i < typeHeaders.length; i++) {
+                    h3.createCell(i).setCellValue(typeHeaders[i]);
+                    h3.getCell(i).setCellStyle(headerStyle);
+                }
+                Map<String, Object> roomTypeHeat = (Map<String, Object>) params.get("roomTypeHeatStats");
+                List<Map<String, Object>> typeList = roomTypeHeat != null && roomTypeHeat.get("list") != null
+                        ? (List<Map<String, Object>>) roomTypeHeat.get("list") : new ArrayList<>();
+                for (Map<String, Object> item : typeList) {
+                    Row r = sheet3.createRow(rowIdx++);
+                    r.createCell(0).setCellValue(safeString(item.get("typeName")));
+                    r.createCell(1).setCellValue(safeInt(item.get("total")));
+                    r.createCell(2).setCellValue(safeInt(item.get("free")));
+                    r.createCell(3).setCellValue(safeDouble(item.get("freeRate")));
+                }
+                for (int i = 0; i < typeHeaders.length; i++) sheet3.autoSizeColumn(i);
+            }
+
+            if (params != null && params.get("statusDurationStats") != null) {
+                Sheet sheet4 = workbook.createSheet("状态时长统计");
+                rowIdx = 0;
+                Row h4 = sheet4.createRow(rowIdx++);
+                h4.createCell(0).setCellValue("指标");
+                h4.getCell(0).setCellStyle(headerStyle);
+                h4.createCell(1).setCellValue("数值");
+                h4.getCell(1).setCellStyle(headerStyle);
+
+                Map<String, Object> statusDuration = (Map<String, Object>) params.get("statusDurationStats");
+                String[][] durationData = {
+                        {"平均清洁时长(小时)", safeString(statusDuration.get("avgCleanHours"))},
+                        {"平均维修时长(天)", safeString(statusDuration.get("avgRepairDays"))},
+                        {"空闲房间总数", safeString(statusDuration.get("totalFree"))}
+                };
+                for (String[] row : durationData) {
+                    Row r = sheet4.createRow(rowIdx++);
+                    r.createCell(0).setCellValue(row[0]);
+                    r.createCell(1).setCellValue(row[1]);
+                }
+                sheet4.autoSizeColumn(0);
+                sheet4.autoSizeColumn(1);
+
+                rowIdx++;
+                Row distHeader = sheet4.createRow(rowIdx++);
+                distHeader.createCell(0).setCellValue("空闲时长分布");
+                distHeader.getCell(0).setCellStyle(headerStyle);
+                distHeader.createCell(1).setCellValue("房间数");
+                distHeader.getCell(1).setCellStyle(headerStyle);
+
+                List<Map<String, Object>> idleDist = statusDuration != null && statusDuration.get("idleDurationDist") != null
+                        ? (List<Map<String, Object>>) statusDuration.get("idleDurationDist") : new ArrayList<>();
+                for (Map<String, Object> item : idleDist) {
+                    Row r = sheet4.createRow(rowIdx++);
+                    r.createCell(0).setCellValue(safeString(item.get("range")));
+                    r.createCell(1).setCellValue(safeInt(item.get("count")));
+                }
+
+                List<Map<String, Object>> longIdleRooms = statusDuration != null && statusDuration.get("longIdleRooms") != null
+                        ? (List<Map<String, Object>>) statusDuration.get("longIdleRooms") : new ArrayList<>();
+                if (!longIdleRooms.isEmpty()) {
+                    rowIdx++;
+                    Row longHeader = sheet4.createRow(rowIdx++);
+                    longHeader.createCell(0).setCellValue("长期空闲房间(超过15天)");
+                    longHeader.getCell(0).setCellStyle(headerStyle);
+                    longHeader.createCell(1).setCellValue("空闲天数");
+                    longHeader.getCell(1).setCellStyle(headerStyle);
+                    for (Map<String, Object> item : longIdleRooms) {
+                        Row r = sheet4.createRow(rowIdx++);
+                        r.createCell(0).setCellValue(safeString(item.get("roomNumber")));
+                        r.createCell(1).setCellValue(safeInt(item.get("idleDays")));
+                    }
+                }
+            }
+
+            if (params != null && params.get("statusTrend") != null) {
+                Sheet sheet5 = workbook.createSheet("状态趋势数据");
+                List<Map<String, Object>> trendList = (List<Map<String, Object>>) params.get("statusTrend");
+                if (!trendList.isEmpty()) {
+                    rowIdx = 0;
+                    Row h5 = sheet5.createRow(rowIdx++);
+                    Map<String, Object> firstItem = trendList.get(0);
+                    List<String> keys = new ArrayList<>();
+                    int colIdx = 0;
+                    for (String key : firstItem.keySet()) {
+                        if (!key.startsWith("_")) {
+                            Cell c = h5.createCell(colIdx);
+                            c.setCellValue(key.equals("date") ? "日期" : key);
+                            c.setCellStyle(headerStyle);
+                            keys.add(key);
+                            colIdx++;
+                        }
+                    }
+                    for (Map<String, Object> item : trendList) {
+                        Row r = sheet5.createRow(rowIdx++);
+                        for (int i = 0; i < keys.size(); i++) {
+                            Object val = item.get(keys.get(i));
+                            if (val instanceof Number) {
+                                r.createCell(i).setCellValue(((Number) val).doubleValue());
+                            } else {
+                                r.createCell(i).setCellValue(safeString(val));
+                            }
+                        }
+                    }
+                    for (int i = 0; i < keys.size(); i++) sheet5.autoSizeColumn(i);
+                }
+            }
+
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (Exception e) {
+            throw new RuntimeException("导出统计报表Excel失败：" + e.getMessage(), e);
+        }
+    }
+
+    public String generateStatisticsFileName() {
+        return "酒店统计报表_" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss")) + ".xlsx";
+    }
 }

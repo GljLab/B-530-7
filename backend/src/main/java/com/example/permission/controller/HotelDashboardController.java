@@ -71,4 +71,32 @@ public class HotelDashboardController {
         Map<String, Object> stats = hotelDashboardService.getStatusDurationStats();
         return Result.success(stats);
     }
+
+    @GetMapping("/statusTrend")
+    @PreAuthorize("hasAuthority('hotel:dashboard:query')")
+    public Result<List<Map<String, Object>>> getStatusTrend(@RequestParam(defaultValue = "30") Integer days) {
+        List<Map<String, Object>> stats = hotelDashboardService.getStatusTrend(days);
+        return Result.success(stats);
+    }
+
+    @GetMapping("/floorUsage")
+    @PreAuthorize("hasAuthority('hotel:dashboard:query')")
+    public Result<List<Map<String, Object>>> getFloorUsageStats() {
+        List<Map<String, Object>> stats = hotelDashboardService.getFloorUsageStats();
+        return Result.success(stats);
+    }
+
+    @GetMapping("/roomTypeHeat")
+    @PreAuthorize("hasAuthority('hotel:dashboard:query')")
+    public Result<Map<String, Object>> getRoomTypeHeatStats() {
+        Map<String, Object> stats = hotelDashboardService.getRoomTypeHeatStats();
+        return Result.success(stats);
+    }
+
+    @GetMapping("/statusDurationEnhanced")
+    @PreAuthorize("hasAuthority('hotel:dashboard:query')")
+    public Result<Map<String, Object>> getStatusDurationStatsEnhanced() {
+        Map<String, Object> stats = hotelDashboardService.getStatusDurationStatsEnhanced();
+        return Result.success(stats);
+    }
 }

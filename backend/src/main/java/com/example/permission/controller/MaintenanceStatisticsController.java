@@ -72,6 +72,30 @@ public class MaintenanceStatisticsController {
         return Result.success(statisticsService.getStaffWorkload());
     }
 
+    @GetMapping("/avgDurationTrend")
+    @PreAuthorize("hasAuthority('maintenance:statistics:list')")
+    public Result<List<Map<String, Object>>> getAvgDurationTrend(@RequestParam(defaultValue = "6") Integer months) {
+        return Result.success(statisticsService.getAvgDurationTrend(months));
+    }
+
+    @GetMapping("/staffWorkloadCompare")
+    @PreAuthorize("hasAuthority('maintenance:statistics:list')")
+    public Result<List<Map<String, Object>>> getStaffWorkloadCompare() {
+        return Result.success(statisticsService.getStaffWorkloadCompare());
+    }
+
+    @GetMapping("/inspectionPassRate")
+    @PreAuthorize("hasAuthority('maintenance:statistics:list')")
+    public Result<Map<String, Object>> getInspectionPassRate() {
+        return Result.success(statisticsService.getInspectionPassRate());
+    }
+
+    @GetMapping("/costTrendEnhanced")
+    @PreAuthorize("hasAuthority('maintenance:statistics:list')")
+    public Result<List<Map<String, Object>>> getCostTrendEnhanced(@RequestParam(defaultValue = "6") Integer months) {
+        return Result.success(statisticsService.getCostTrendEnhanced(months));
+    }
+
     @PostMapping("/export")
     @PreAuthorize("hasAuthority('maintenance:statistics:export')")
     public ResponseEntity<byte[]> exportStatistics(@RequestBody(required = false) Map<String, Object> params) throws Exception {

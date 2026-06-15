@@ -48,6 +48,9 @@ public class MaintenanceOrderService {
     @Autowired
     private SysUserMapper sysUserMapper;
 
+    @Autowired
+    private UserFloorPermissionService userFloorPermissionService;
+
     private static final Map<Integer, String> STATUS_MAP = new HashMap<>();
     private static final Map<Integer, String> TYPE_MAP = new HashMap<>();
     private static final Map<Integer, String> PRIORITY_MAP = new HashMap<>();
@@ -391,6 +394,60 @@ public class MaintenanceOrderService {
         if (!canSeeAll) {
             query.and(MAINTENANCE_ORDER.ASSIGNED_USER_ID.eq(currentUserId));
         }
+        query.orderBy(MAINTENANCE_ORDER.PRIORITY.asc(), MAINTENANCE_ORDER.CREATE_TIME.desc());
+        Page<MaintenanceOrder> page = maintenanceOrderMapper.paginate(Page.of(pageNum, pageSize), query);
+        return new PageResult<>(page.getTotalRow(), page.getRecords(),
+                (long) page.getPageNumber(), (long) page.getPageSize());
+    }
+
+    public PageResult<MaintenanceOrder> pageListWithPermission(Integer pageNum, Integer pageSize,
+                                                                String orderNo, String roomNumber,
+                                                                List<Integer> statusList, List<Integer> typeList,
+                                                                List<Integer> priorityList, Long assignedUserId,
+                                                                Long currentUserId, boolean canSeeAll,
+                                                                Long userId) {
+        QueryWrapper query = QueryWrapper.create()
+                .from(MaintenanceOrder.class)
+                .where(MAINTENANCE_ORDER.DELETED.eq(0));
+        if (StringUtils.hasText(orderNo)) {
+            query.and(MAINTENANCE_ORDER.ORDER_NO.like(orderNo));
+        }
+        if (StringUtils.hasText(roomNumber)) {
+            query.and(MAINTENANCE_ORDER.ROOM_NUMBER.like(roomNumber));
+        }
+        if (statusList != null && !statusList.isEmpty()) {
+            query.and(MAINTENANCE_ORDER.STATUS.in(statusList));
+        }
+        if (typeList != null && !typeList.isEmpty()) {
+            query.and(MAINTENANCE_ORDER.MAINTENANCE_TYPE.in(typeList));
+        }
+        if (priorityList != null && !priorityList.isEmpty()) {
+            query.and(MAINTENANCE_ORDER.PRIORITY.in(priorityList));
+        }
+        if (assignedUserId != null) {
+            query.and(MAINTENANCE_ORDER.ASSIGNED_USER_ID.eq(assignedUserId));
+        }
+        if (!canSeeAll) {
+            query.and(MAINTENANCE_ORDER.ASSIGNED_USER_ID.eq(currentUserId));
+        }
+
+        List<Long> floorIds = userFloorPermissionService.getFloorIdsByUserId(userId);
+        if (floorIds != null && !floorIds.isEmpty()) {
+            QueryWrapper roomQuery = QueryWrapper.create()
+                    .from(Room.class)
+                    .select(ROOM.ID)
+                    .where(ROOM.FLOOR_ID.in(floorIds));
+            List<Long> roomIds = roomMapper.selectListByQuery(roomQuery)
+                    .stream()
+                    .map(Room::getId)
+                    .collect(Collectors.toList());
+            if (!roomIds.isEmpty()) {
+                query.and(MAINTENANCE_ORDER.ROOM_ID.in(roomIds));
+            } else {
+                query.and(MAINTENANCE_ORDER.ROOM_ID.eq(-1L));
+            }
+        }
+
         query.orderBy(MAINTENANCE_ORDER.PRIORITY.asc(), MAINTENANCE_ORDER.CREATE_TIME.desc());
         Page<MaintenanceOrder> page = maintenanceOrderMapper.paginate(Page.of(pageNum, pageSize), query);
         return new PageResult<>(page.getTotalRow(), page.getRecords(),

@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -282,6 +283,219 @@ public class MaintenanceStatisticsService {
                 (Integer) b.get("totalCount"),
                 (Integer) a.get("totalCount")
         ));
+        return result;
+    }
+
+    public List<Map<String, Object>> getAvgDurationTrend(Integer months) {
+        if (months == null || months <= 0) {
+            months = 6;
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        YearMonth currentMonth = YearMonth.now();
+
+        for (int i = months - 1; i >= 0; i--) {
+            YearMonth ym = currentMonth.minusMonths(i);
+            LocalDateTime start = ym.atDay(1).atStartOfDay();
+            LocalDateTime end = ym.plusMonths(1).atDay(1).atStartOfDay();
+
+            QueryWrapper query = QueryWrapper.create()
+                    .from(MaintenanceOrder.class)
+                    .where(MAINTENANCE_ORDER.ACCEPT_TIME.isNotNull())
+                    .and(MAINTENANCE_ORDER.FINISH_TIME.isNotNull())
+                    .and(MAINTENANCE_ORDER.FINISH_TIME.ge(start))
+                    .and(MAINTENANCE_ORDER.FINISH_TIME.lt(end))
+                    .and(MAINTENANCE_ORDER.DELETED.eq(0));
+            List<MaintenanceOrder> orders = maintenanceOrderMapper.selectListByQuery(query);
+
+            double totalHours = 0;
+            int count = 0;
+            for (MaintenanceOrder o : orders) {
+                long minutes = Duration.between(o.getAcceptTime(), o.getFinishTime()).toMinutes();
+                totalHours += minutes / 60.0;
+                count++;
+            }
+
+            Map<String, Object> item = new HashMap<>();
+            item.put("month", ym.format(DateTimeFormatter.ofPattern("yyyy-MM")));
+            item.put("avgHours", count > 0
+                    ? BigDecimal.valueOf(totalHours / count).setScale(2, RoundingMode.HALF_UP).doubleValue()
+                    : 0);
+            item.put("count", count);
+            result.add(item);
+        }
+        return result;
+    }
+
+    public List<Map<String, Object>> getStaffWorkloadCompare() {
+        QueryWrapper query = QueryWrapper.create()
+                .from(MaintenanceOrder.class)
+                .where(MAINTENANCE_ORDER.ASSIGNED_USER_ID.isNotNull())
+                .and(MAINTENANCE_ORDER.DELETED.eq(0));
+        List<MaintenanceOrder> assignedOrders = maintenanceOrderMapper.selectListByQuery(query);
+
+        Map<Long, List<MaintenanceOrder>> userGroup = assignedOrders.stream()
+                .collect(Collectors.groupingBy(MaintenanceOrder::getAssignedUserId));
+
+        List<Long> userIds = new ArrayList<>();
+        List<String> nicknames = new ArrayList<>();
+        List<Integer> totalCounts = new ArrayList<>();
+        List<Integer> finishedCounts = new ArrayList<>();
+        List<Integer> processingCounts = new ArrayList<>();
+        List<Double> avgHoursList = new ArrayList<>();
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<Long, List<MaintenanceOrder>> entry : userGroup.entrySet()) {
+            SysUser user = sysUserMapper.selectOneById(entry.getKey());
+            if (user == null) continue;
+            List<MaintenanceOrder> orders = entry.getValue();
+            List<MaintenanceOrder> finished = orders.stream()
+                    .filter(o -> o.getFinishTime() != null)
+                    .collect(Collectors.toList());
+            List<MaintenanceOrder> processing = orders.stream()
+                    .filter(o -> o.getStatus() != null && (o.getStatus() == 2))
+                    .collect(Collectors.toList());
+
+            double totalHours = 0;
+            int withHours = 0;
+            for (MaintenanceOrder o : finished) {
+                if (o.getActualHours() != null) {
+                    totalHours += o.getActualHours().doubleValue();
+                    withHours++;
+                }
+            }
+            double avgHours = withHours > 0
+                    ? BigDecimal.valueOf(totalHours / withHours).setScale(2, RoundingMode.HALF_UP).doubleValue()
+                    : 0;
+
+            Map<String, Object> item = new HashMap<>();
+            item.put("userId", user.getId());
+            item.put("nickname", user.getNickname());
+            item.put("totalCount", orders.size());
+            item.put("finishedCount", finished.size());
+            item.put("processingCount", processing.size());
+            item.put("avgHours", avgHours);
+            result.add(item);
+
+            userIds.add(user.getId());
+            nicknames.add(user.getNickname() != null ? user.getNickname() : user.getUsername());
+            totalCounts.add(orders.size());
+            finishedCounts.add(finished.size());
+            processingCounts.add(processing.size());
+            avgHoursList.add(avgHours);
+        }
+
+        result.sort((a, b) -> Integer.compare(
+                (Integer) b.get("totalCount"),
+                (Integer) a.get("totalCount")
+        ));
+
+        Map<String, Object> chartData = new HashMap<>();
+        chartData.put("userIds", userIds);
+        chartData.put("nicknames", nicknames);
+        chartData.put("totalCounts", totalCounts);
+        chartData.put("finishedCounts", finishedCounts);
+        chartData.put("processingCounts", processingCounts);
+        chartData.put("avgHours", avgHoursList);
+
+        List<Map<String, Object>> finalResult = new ArrayList<>();
+        Map<String, Object> wrapper = new HashMap<>();
+        wrapper.put("list", result);
+        wrapper.put("chart", chartData);
+        finalResult.add(wrapper);
+
+        return result;
+    }
+
+    public Map<String, Object> getInspectionPassRate() {
+        Map<String, Object> result = new HashMap<>();
+
+        QueryWrapper inspectedQuery = QueryWrapper.create()
+                .from(MaintenanceOrder.class)
+                .where(MAINTENANCE_ORDER.INSPECT_RESULT.isNotNull())
+                .and(MAINTENANCE_ORDER.DELETED.eq(0));
+        List<MaintenanceOrder> inspectedOrders = maintenanceOrderMapper.selectListByQuery(inspectedQuery);
+
+        int totalInspected = inspectedOrders.size();
+        int passed = (int) inspectedOrders.stream()
+                .filter(o -> o.getInspectResult() != null && o.getInspectResult() == 1)
+                .count();
+        double passRate = totalInspected > 0 ? (passed * 100.0) / totalInspected : 0;
+
+        result.put("totalInspected", totalInspected);
+        result.put("passed", passed);
+        result.put("passRate", BigDecimal.valueOf(passRate).setScale(2, RoundingMode.HALF_UP).doubleValue());
+
+        List<Map<String, Object>> monthlyTrend = new ArrayList<>();
+        YearMonth currentMonth = YearMonth.now();
+        for (int i = 5; i >= 0; i--) {
+            YearMonth ym = currentMonth.minusMonths(i);
+            LocalDateTime start = ym.atDay(1).atStartOfDay();
+            LocalDateTime end = ym.plusMonths(1).atDay(1).atStartOfDay();
+
+            QueryWrapper monthQuery = QueryWrapper.create()
+                    .from(MaintenanceOrder.class)
+                    .where(MAINTENANCE_ORDER.INSPECT_RESULT.isNotNull())
+                    .and(MAINTENANCE_ORDER.INSPECT_TIME.ge(start))
+                    .and(MAINTENANCE_ORDER.INSPECT_TIME.lt(end))
+                    .and(MAINTENANCE_ORDER.DELETED.eq(0));
+            List<MaintenanceOrder> monthOrders = maintenanceOrderMapper.selectListByQuery(monthQuery);
+
+            int monthTotal = monthOrders.size();
+            int monthPassed = (int) monthOrders.stream()
+                    .filter(o -> o.getInspectResult() != null && o.getInspectResult() == 1)
+                    .count();
+            double monthRate = monthTotal > 0 ? (monthPassed * 100.0) / monthTotal : 0;
+
+            Map<String, Object> monthItem = new HashMap<>();
+            monthItem.put("month", ym.format(DateTimeFormatter.ofPattern("yyyy-MM")));
+            monthItem.put("total", monthTotal);
+            monthItem.put("passed", monthPassed);
+            monthItem.put("passRate", BigDecimal.valueOf(monthRate).setScale(2, RoundingMode.HALF_UP).doubleValue());
+            monthlyTrend.add(monthItem);
+        }
+        result.put("monthlyTrend", monthlyTrend);
+
+        return result;
+    }
+
+    public List<Map<String, Object>> getCostTrendEnhanced(Integer months) {
+        if (months == null || months <= 0) {
+            months = 6;
+        }
+        List<Map<String, Object>> result = new ArrayList<>();
+        YearMonth currentMonth = YearMonth.now();
+
+        for (int i = months - 1; i >= 0; i--) {
+            YearMonth ym = currentMonth.minusMonths(i);
+            LocalDateTime start = ym.atDay(1).atStartOfDay();
+            LocalDateTime end = ym.plusMonths(1).atDay(1).atStartOfDay();
+
+            QueryWrapper query = QueryWrapper.create()
+                    .from(MaintenanceOrder.class)
+                    .where(MAINTENANCE_ORDER.FINISH_TIME.ge(start))
+                    .and(MAINTENANCE_ORDER.FINISH_TIME.lt(end))
+                    .and(MAINTENANCE_ORDER.DELETED.eq(0))
+                    .and(MAINTENANCE_ORDER.STATUS.in(Arrays.asList(4, 5)));
+            List<MaintenanceOrder> orders = maintenanceOrderMapper.selectListByQuery(query);
+
+            BigDecimal totalCost = BigDecimal.ZERO;
+            for (MaintenanceOrder o : orders) {
+                if (o.getMaintenanceCost() != null) {
+                    totalCost = totalCost.add(o.getMaintenanceCost());
+                }
+            }
+            int orderCount = orders.size();
+            BigDecimal avgCostPerOrder = orderCount > 0
+                    ? totalCost.divide(BigDecimal.valueOf(orderCount), 2, RoundingMode.HALF_UP)
+                    : BigDecimal.ZERO;
+
+            Map<String, Object> item = new HashMap<>();
+            item.put("month", ym.format(DateTimeFormatter.ofPattern("yyyy-MM")));
+            item.put("totalCost", totalCost);
+            item.put("avgCostPerOrder", avgCostPerOrder);
+            item.put("orderCount", orderCount);
+            result.add(item);
+        }
         return result;
     }
 }
