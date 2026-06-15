@@ -1,0 +1,209 @@
+// 全局样式变量
+$primary-color: #667eea;
+$primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+$success-color: #67c23a;
+$warning-color: #e6a23c;
+$danger-color: #f56c6c;
+$info-color: #909399;
+
+$bg-color: #f5f7fa;
+$sidebar-bg: #304156;
+$sidebar-active-bg: #263445;
+
+$border-radius: 8px;
+$box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+
+// 重置样式
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+  font-size: 14px;
+  color: #303133;
+  background-color: $bg-color;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+// 滚动条样式
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c0c4cc;
+  border-radius: 3px;
+  
+  &:hover {
+    background: #909399;
+  }
+}
+
+// Element Plus 样式覆盖
+.el-button--primary {
+  background: $primary-gradient !important;
+  border: none !important;
+  
+  &:hover {
+    opacity: 0.9;
+  }
+}
+
+.el-card {
+  border-radius: $border-radius;
+  border: none;
+  box-shadow: $box-shadow;
+}
+
+.el-table {
+  border-radius: $border-radius;
+  
+  th.el-table__cell {
+    background-color: #fafafa !important;
+    color: #606266;
+    font-weight: 600;
+  }
+}
+
+.el-dialog {
+  border-radius: $border-radius;
+  
+  .el-dialog__header {
+    border-bottom: 1px solid #ebeef5;
+    padding: 16px 20px;
+    margin: 0;
+  }
+  
+  .el-dialog__body {
+    padding: 20px;
+  }
+  
+  .el-dialog__footer {
+    border-top: 1px solid #ebeef5;
+    padding: 12px 20px;
+  }
+}
+
+// 表单样式优化
+.el-form-item__label {
+  font-weight: 500;
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  border-radius: 6px !important;
+}
+
+// 分页样式
+.el-pagination {
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+// 自定义工具类
+.flex {
+  display: flex;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.text-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mb-16 {
+  margin-bottom: 16px;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+// 页面容器
+.page-container {
+  padding: 20px;
+  
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    
+    .page-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #303133;
+    }
+  }
+  
+  .search-bar {
+    background: #fff;
+    padding: 20px;
+    border-radius: $border-radius;
+    margin-bottom: 16px;
+    box-shadow: $box-shadow;
+    
+    .el-form-item {
+      margin-bottom: 0;
+      margin-right: 16px;
+    }
+  }
+  
+  .table-card {
+    background: #fff;
+    padding: 20px;
+    border-radius: $border-radius;
+    box-shadow: $box-shadow;
+  }
+}
+
+// Select 下拉箭头优化
+.el-select .el-input__wrapper {
+  padding-right: 35px !important;
+}
+
+.el-select .el-input__suffix {
+  right: 12px !important;
+}
+
+// TreeSelect 样式优化
+.el-tree-select {
+  .el-select__wrapper {
+    padding-right: 35px !important;
+  }
+}
+
+// 禁用自动填充背景色
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px white inset !important;
+  -webkit-text-fill-color: #303133 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}

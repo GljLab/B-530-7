@@ -1,0 +1,50 @@
+server:
+  port: 8000
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://db:3306/permission_system?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false
+    username: root
+    password: root
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      auto-commit: true
+      idle-timeout: 30000
+      pool-name: PermissionHikariCP
+      max-lifetime: 1800000
+      connection-timeout: 30000
+  http:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
+
+# MyBatis-Flex 配置
+mybatis-flex:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.example.permission.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+
+jwt:
+  secret: ${JWT_SECRET:please-set-a-secure-jwt-secret-in-env-variable}
+  expiration: 86400000
+
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+
+logging:
+  level:
+    root: INFO
+    "[com.example.permission]": DEBUG
+    "[com.mybatisflex]": DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
