@@ -15,7 +15,8 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./db/migration_20240615_add_related_order_id.sql:/docker-entrypoint-initdb.d/02-migration.sql:ro
+      - ./db/migration_20240615_add_related_order_id.sql:/docker-entrypoint-initdb.d/02-migration_20240615.sql:ro
+      - ./db/migration_20260615_enhancements.sql:/docker-entrypoint-initdb.d/03-migration_20260615.sql:ro
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]

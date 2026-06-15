@@ -123,7 +123,7 @@ INSERT INTO sys_menu (id, menu_name, parent_id, order_num, path, component, perm
 
 -- 统计导出权限
 INSERT INTO sys_menu (id, menu_name, parent_id, order_num, path, component, perms, menu_type, visible, status, icon) VALUES
-(158, '统计报表导出', 105, 3, '', NULL, 'hotel:dashboard:exportAll', 2, 1, 1, NULL);
+(160, '统计报表导出', 105, 3, '', NULL, 'hotel:dashboard:exportAll', 2, 1, 1, NULL);
 
 -- =============================================
 -- 7. 分配角色权限
@@ -134,7 +134,7 @@ INSERT INTO sys_role_menu (role_id, menu_id) VALUES
 (1, 154), (1, 155), (1, 156), (1, 157),
 (1, 106), (1, 158), (1, 159),
 (1, 221), (1, 222),
-(1, 158);
+(1, 160);
 
 -- 酒店管理员：批量操作、楼层权限配置、批量分配
 INSERT INTO sys_role_menu (role_id, menu_id) VALUES
